@@ -1,8 +1,8 @@
 <!-- Name -->
 <div class="form-group {{ $errors->has('name') ? ' has-error' : '' }}">
     <label for="name" class="col-md-3 control-label">{{ $translated_name }}</label>
-    <div class="col-md-7 col-sm-12{{  (\App\Helpers\Helper::checkIfRequired($item, 'name')) ? ' required' : '' }}">
-        <input class="form-control" type="text" name="name" id="name" value="{{ Request::old('name', $item->name) }}" {!!   (\App\Helpers\Helper::checkIfRequired($item, 'name')) ? ' data-validation="required"' : '' !!}>
-        {!! $errors->first('name', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
+    <div class="col-md-8 col-sm-12">
+        <input class="form-control" style="width:100%;" type="text" name="name" aria-label="name" id="name" value="{{ old('name', $item->name) }}"{!!  (Helper::checkIfRequired($item, 'name')) ? ' required' : '' !!} maxlength="191" />
+        <x-form.error name="name" />
     </div>
 </div>

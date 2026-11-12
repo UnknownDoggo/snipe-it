@@ -1,13 +1,15 @@
 <?php
 
-return array(
-    'about_consumables_title' 			=> 'O potrošnim materijalima',
-    'about_consumables_text'  			=> 'Potrošni materijali je sve što se kupuje, a troši se tokom vremena. Na primjer, toner, mastilo, ili fotokopir papir i sl.',
-    'checkout'                          => 'Checkout Consumable to User',
-    'consumable_name'                   => 'Naziv potrošnog materijala',
-    'create'                            => 'Kreiraj potrošni materijal',
-    'item_no'                           => 'Stavka Br.',
-    'remaining' 			            => 'Preostalo',
-    'total' 			                => 'Ukupno',
-    'update'                            => 'Ažuriraj potrošni materijal',
-);
+return [
+    'checkout' => 'Checkout Consumable to User',
+    'consumable_name' => 'Naziv potrošnog materijala',
+    'create' => 'Kreiraj potrošni materijal',
+    'item_no' => 'Stavka Br.',
+    'remaining' => 'Preostalo',
+    'total' => 'Ukupno',
+    'update' => 'Ažuriraj potrošni materijal',
+    'inventory_warning' => 'Stanje ove potrošne robe je ispod minimalne količine od :min_count',
+    'exclude_deleted' => 'Izuzmi obrisanu potrošnu opremu',
+    'include_deleted' => 'Uvrsti obrisanu potrošnu opremu',
+    'only_deleted' => 'Samo obrisana potrošna oprema',
+];

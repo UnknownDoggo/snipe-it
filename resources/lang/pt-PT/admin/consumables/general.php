@@ -1,13 +1,15 @@
 <?php
 
-return array(
-    'about_consumables_title' 			=> 'Acerca de Consumíveis',
-    'about_consumables_text'  			=> 'Consumíveis são todo e qualquer item comprado que será usado ao longo do tempo. Por exemplo, papel ou tinta de impressora.',
-    'checkout'                          => 'Requisitar consumível',
-    'consumable_name'                   => 'Nome do consumível',
-    'create'                            => 'Criar consumível',
-    'item_no'                           => 'Item Num.',
-    'remaining' 			            => 'Restantes',
-    'total' 			                => 'Total',
-    'update'                            => 'Atualizar consumível',
-);
+return [
+    'checkout' => 'Requisitar consumível',
+    'consumable_name' => 'Nome do consumível',
+    'create' => 'Criar consumível',
+    'item_no' => 'Item Num.',
+    'remaining' => 'Restantes',
+    'total' => 'Total',
+    'update' => 'Atualizar consumível',
+    'inventory_warning' => 'O inventário deste consumível está abaixo da quantidade mínima de :min_count',
+    'exclude_deleted' => 'Exclude Deleted Consumables',
+    'include_deleted' => 'Include Deleted Consumables',
+    'only_deleted' => 'Only Deleted Consumables',
+];

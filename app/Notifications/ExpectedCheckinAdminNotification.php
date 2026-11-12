@@ -3,75 +3,55 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Symfony\Component\Mime\Email;
 
-class ExpectedCheckinAdminNotification extends Notification
+class ExpectedCheckinAdminNotification extends Notification implements ShouldQueue
 {
     use Queueable;
-    /**
-     * @var
-     */
-    private $params;
+
 
     /**
      * Create a new notification instance.
-     *
-     * @param $params
      */
-    public function __construct($params)
-    {
-        $this->assets = $params;
+    public function __construct(
+        public $assets
+    ) {
     }
 
     /**
      * Get the notification's delivery channels.
      *
-     * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via()
     {
         $notifyBy = [];
-        $notifyBy[]='mail';
+        $notifyBy[] = 'mail';
+
         return $notifyBy;
-    }
-
-    public function toSlack($notifiable)
-    {
-
     }
 
     /**
      * Get the mail representation of the notification.
      *
-     * @param  mixed  $asset
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
-    public function toMail($params)
+    public function toMail()
     {
-
         $message = (new MailMessage)->markdown('notifications.markdown.report-expected-checkins',
             [
-                'assets'  => $this->assets,
+                'assets' => $this->assets,
             ])
-            ->subject('Expected asset checkin report');
+            ->subject('⏰'.trans('mail.Expected_Checkin_Report'))
+            ->withSymfonyMessage(function (Email $message) {
+                $message->getHeaders()->addTextHeader(
+                    'X-System-Sender', 'Snipe-IT'
+                );
+            });
 
         return $message;
-
-
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
-    public function toArray($notifiable)
-    {
-        return [
-            //
-        ];
     }
 }

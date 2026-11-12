@@ -3,50 +3,64 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 
 class ModalController extends Controller
 {
-    function location() {
-        return view('modals.location');
-    }
+    /**
+     * Load the modal views after confirming they are in the allowed_types array.
+     * The allowed types away just prevents shithead skiddies from fuzzing the urls
+     * with automated scripts and junking up the logs. - snipe
+     *
+     * @version    v5.3.7-pre
+     *
+     * @author [Brady Wetherington] [<uberbrady@gmail.com>]
+     * @author [A. Gianotto] [<snipe@snipe.net]
+     *
+     * @return View
+     */
+    public function show(Request $request, $type, $itemId = null)
+    {
 
-    function model() {
-        return view('modals.model');
-    }
+        // These values should correspond to a file in resources/views/modals/
+        $allowed_types = [
+            'category',
+            'company',
+            'kit-model',
+            'kit-license',
+            'kit-consumable',
+            'kit-accessory',
+            'location',
+            'maintenance-type',
+            'manufacturer',
+            'model',
+            'statuslabel',
+            'supplier',
+            'upload-file',
+            'user',
+            'add-note',
+        ];
 
-    function statuslabel() {
-        return view('modals.statuslabel')->with('statuslabel_types', Helper::statusTypeList());
-    }
+        if (in_array($type, $allowed_types)) {
+            if (in_array($type, ['kit-model', 'kit-license', 'kit-consumable', 'kit-accessory']) && empty($itemId)) {
+                abort(404, 'Kit modal requires a kit id');
+            }
 
-    function supplier() {
-        return view('modals.supplier');
-    }
+            $view = view("blade.modals.{$type}");
 
-    function user() {
-        return view('modals.user');
-    }
+            if ($type == 'statuslabel') {
+                $view->with('statuslabel_types', Helper::statusTypeList($request->query('scope')));
+            }
 
-    function category() {
-        return view('modals.category');
-    }
+            if (in_array($type, ['kit-model', 'kit-license', 'kit-consumable', 'kit-accessory'])) {
+                $view->with('kitId', $itemId);
+            }
 
-    function manufacturer() {
-        return view('modals.manufacturer');
-    }
+            return $view;
+        }
 
-    function kitModel() {
-        return view('modals.kit-model');
-    }
+        abort(404, 'Page not found');
 
-    function kitLicense() {
-        return view('modals.kit-license');
-    }
-
-    function kitConsumable() {
-        return view('modals.kit-consumable');
-    }
-
-    function kitAccessory() {
-        return view('modals.kit-accessory');
     }
 }

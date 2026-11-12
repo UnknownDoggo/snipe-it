@@ -3,14 +3,16 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Symfony\Component\Mime\Email;
 
-class FirstAdminNotification extends Notification
+class FirstAdminNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    private $_data = array();
+    public array $_data = [];
 
     /**
      * Create a new notification instance.
@@ -24,16 +26,15 @@ class FirstAdminNotification extends Notification
         $this->_data['last_name'] = $content['last_name'];
         $this->_data['username'] = $content['username'];
         $this->_data['password'] = $content['password'];
-        $this->_data['url'] = url('/');
+        $this->_data['url'] = config('app.url');
     }
 
     /**
      * Get the notification's delivery channels.
      *
-     * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via()
     {
         return ['mail'];
     }
@@ -41,26 +42,17 @@ class FirstAdminNotification extends Notification
     /**
      * Get the mail representation of the notification.
      *
-     * @param  mixed  $notifiable
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
-    public function toMail($notifiable)
+    public function toMail()
     {
         return (new MailMessage)
-            ->subject(trans('mail.welcome', ['name' => $this->_data['first_name'] . ' ' . $this->_data['last_name'] ]))
-            ->markdown('notifications.FirstAdmin', $this->_data);
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
-    public function toArray($notifiable)
-    {
-        return [
-            //
-        ];
+            ->subject('👋 '.trans('mail.welcome', ['name' => $this->_data['first_name'].' '.$this->_data['last_name']]))
+            ->markdown('notifications.FirstAdmin', $this->_data)
+            ->withSymfonyMessage(function (Email $message) {
+                $message->getHeaders()->addTextHeader(
+                    'X-System-Sender', 'Snipe-IT'
+                );
+            });
     }
 }

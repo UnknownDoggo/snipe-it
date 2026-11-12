@@ -1,27 +1,40 @@
 @extends('layouts/default')
-
 {{-- Page title --}}
 @section('title')
-    Personal API Keys
+    {{ trans('account/general.personal_api_keys') }}
     @parent
 @stop
-
 {{-- Page content --}}
 @section('content')
-     @if (!config('app.lock_passwords'))
-        <passport-personal-access-tokens
-            token-url="{{ url('oauth/personal-access-tokens') }}"
-            scopes-url="{{ url('oauth/scopes') }}">
-        </passport-personal-access-tokens>
-     @else
-         <p class="help-block">{{ trans('general.feature_disabled') }}</p>
-    @endif
+        <div class="row">
+            <div class="col-md-8">
+
+                @if (! config('app.lock_passwords'))
+                    <livewire:personal-access-tokens />
+                @else
+                    <x-demo-lock>{{ trans('general.feature_disabled') }}</x-demo-lock>
+                @endif
+            </div>
+            <div class="col-md-4">
+                <x-alert type="warning" icon="warning">
+                    {{ trans('account/general.api_key_warning') }}
+                </x-alert>
+
+                <p>{{ trans('account/general.api_base_url') }}<br>
+                    <code>{{ url('/api/v1') }}{!! trans('account/general.api_base_url_endpoint') !!}</code></p>
+
+                <p>{{ trans('account/general.mcp_url') }} <span class="label label-warning">beta</span><br>
+                    <code>{{ url('/mcp/snipe-it') }}</code></p>
+
+                <p>{{ trans('account/general.api_token_expiration_time') }}
+                    <strong>{{ config('passport.expiration_years') }} {{ trans('general.years') }}</strong>.</p>
+
+
+                <p>{!! trans('account/general.api_reference') !!}</p>
+            </div>
+        </div>
+
 @stop
 
 @section('moar_scripts')
-<script nonce="{{ csrf_token() }}">
-    new Vue({
-        el: "#app",
-    });
-</script>
 @endsection

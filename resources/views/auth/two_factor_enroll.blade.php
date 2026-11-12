@@ -13,7 +13,7 @@
 
                     <div class="box login-box">
                         <div class="box-header">
-                            <h3 class="box-title"> {{ trans('admin/settings/general.two_factor_enrollment')  }}</h3>
+                            <h2 class="box-title"> {{ trans('admin/settings/general.two_factor_enrollment')  }}</h2>
                         </div>
 
 
@@ -21,7 +21,7 @@
                             <div class="row">
 
                                 <!-- Notifications -->
-                                @include('notifications')
+                                <x-notifications />
 
                                 <div class="col-md-12">
                                     {{ trans('admin/settings/general.two_factor_enrollment_text') }}
@@ -40,8 +40,8 @@
 
                             <fieldset>
                                 <div class="form-group{{ $errors->has('secret') ? ' has-error' : '' }}">
-                                    <input class="form-control" placeholder="{{ trans('admin/settings/general.two_factor_secret')  }}" name="two_factor_secret" type="text" autofocus>
-                                    {!! $errors->first('two_factor_secret', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
+                                    <input class="form-control" placeholder="{{ trans('admin/settings/general.two_factor_secret')  }}" name="two_factor_secret" type="text" aria-label="two_factor_secret" autofocus>
+                                    <x-form.error name="two_factor_secret" />
                                 </div>
                             </fieldset>
                                 </div>

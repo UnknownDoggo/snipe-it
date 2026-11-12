@@ -2,68 +2,67 @@
 
 {{-- Page title --}}
 @section('title')
-    {{ trans('admin/licenses/general.checkin') }}
+    {{ trans('admin/components/general.checkin') }}
     @parent
 @stop
 
-
 @section('header_right')
-    <a href="{{ URL::previous() }}" class="btn btn-primary pull-right">
-        {{ trans('general.back') }}</a>
+    <a href="{{ URL::previous() }}" class="btn btn-primary pull-right">{{ trans('general.back') }}</a>
 @stop
 
 {{-- Page content --}}
 @section('content')
-    <div class="row">
-        <!-- left column -->
-        <div class="col-md-7">
-            <form class="form-horizontal" method="post" action="{{ route('component.checkin.save', $component_assets->id) }}" autocomplete="off">
-                {{csrf_field()}}
 
-                <div class="box box-default">
-                    <div class="box-header with-border">
-                        <h3 class="box-title"> {{ $component->name }}</h3>
-                    </div>
-                    <div class="box-body">
+<x-container class="col-md-7">
 
-                        <!-- Checked out to -->
-                        <div class="form-group">
-                            <label class="col-sm-2 control-label">{{ trans('general.checkin_from') }}</label>
-                            <div class="col-md-6">
-                                <p class="form-control-static">{{ $asset->present()->fullName }}</p>
-                            </div>
-                        </div>
+    <x-form route="{{ route('components.checkin.store', [$component_assets->id, 'backto' => 'asset']) }}">
 
+        <x-box header="{{ $snipe_component->name }}">
 
-                        <!-- Qty -->
-                        <div class="form-group {{ $errors->has('checkin_qty') ? 'error' : '' }}">
-                            <label for="note" class="col-md-2 control-label">{{ trans('general.qty') }}</label>
-                            <div class="col-md-3">
-                                <input type="text" class="form-control" name="checkin_qty" value="{{ Request::old('assigned_qty', $component_assets->assigned_qty) }}">
-                            </div>
-                            <div class="col-md-9 col-md-offset-2">
-                            <p class="help-block">Must be {{ $component_assets->assigned_qty }} or less.</p>
-                            {!! $errors->first('checkin_qty', '<span class="alert-msg"><i class="fa fa-times"></i>
-                            :message</span>') !!}
-                            </div>
-                        </div>
+            @if ($snipe_component->category)
+                <x-form.static :label="trans('general.category')">
+                    <x-icon type="category" class="fa-fw" style="{{ $snipe_component->category->tag_color ? 'color: '.e($snipe_component->category->tag_color).';' : '' }}" />
+                    {{ $snipe_component->category->name }}
+                </x-form.static>
+            @endif
 
-                        <!-- Note -->
-                        <div class="form-group {{ $errors->has('note') ? 'error' : '' }}">
-                            <label for="note" class="col-md-2 control-label">{{ trans('admin/hardware/form.notes') }}</label>
-                            <div class="col-md-7">
-                                <textarea class="col-md-6 form-control" id="note" name="note">{{ Request::old('note', $component->note) }}</textarea>
-                                {!! $errors->first('note', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
-                            </div>
-                        </div>
-                        <div class="box-footer">
-                            <a class="btn btn-link" href="{{ route('components.index') }}">{{ trans('button.cancel') }}</a>
-                            <button type="submit" class="btn btn-success pull-right"><i class="fa fa-check icon-white"></i> {{ trans('general.checkin') }}</button>
-                        </div>
-                    </div> <!-- /.box-->
-            </form>
-        </div> <!-- /.col-md-7-->
-    </div>
+            <x-checkin.checked-out-from
+                :target="$asset"
+                :checkout-date="$checkoutDate"
+                :checkout-by="$checkoutBy"
+            />
 
+            <x-input.quantity
+                name="checkin_qty"
+                :value="$component_assets->assigned_qty"
+                :min="1"
+                :max="$component_assets->assigned_qty"
+                :label="trans('general.qty')"
+                :help_text="trans('admin/components/general.checkin_limit', ['assigned_qty' => $component_assets->assigned_qty])"
+            />
+
+            <x-form.row
+                :label="trans('admin/hardware/form.notes')"
+                :item="$snipe_component"
+                name="note"
+                type="textarea"
+            />
+
+            <x-slot:customfooter>
+                <x-redirect_submit_options
+                    index_route="components.index"
+                    :button_label="trans('general.checkin')"
+                    :options="[
+                        'index' => trans('admin/hardware/form.redirect_to_all', ['type' => trans('general.components')]),
+                        'item' => trans('admin/hardware/form.redirect_to_type', ['type' => trans('general.component')]),
+                    ]"
+                />
+            </x-slot:customfooter>
+
+        </x-box>
+
+    </x-form>
+
+</x-container>
 
 @stop

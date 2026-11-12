@@ -1,17 +1,16 @@
 <?php
 
-return array(
+return [
 
-    'create'				=> 'Skapa Modell',
-    'created_at' 			=> 'Skapad den',
-    'eol'	 				=> 'EOL',
-    'modelnumber'   		=> 'modell nr.',
-    'name'      			=> 'Anläggningsmodell Namn',
-    'numassets' 			=> 'Inventarier',
-    'title'					=> 'Inventarie Modell',
-    'update'				=> 'Uppdatera Inventarie Modell',
-    'view'					=> 'Visa tillgångsmodell',
-    'update'				=> 'Uppdatera Inventarie Modell',
-    'clone'				=> 'Kopiera Modell',
-    'edit'				=> 'Ändra Modell',
-);
+    'create' => 'Skapa Modell',
+    'created_at' => 'Skapad',
+    'eol' => 'EOL',
+    'modelnumber' => 'Modellnr.',
+    'name' => 'Tillgångens modellnamn',
+    'numassets' => 'Tillgångar',
+    'title' => 'Modeller',
+    'update' => 'Uppdatera tillgångsmodell',
+    'view' => 'Visa tillgångsmodell',
+    'clone' => 'Kopiera modell',
+    'edit' => 'Ändra modell',
+];

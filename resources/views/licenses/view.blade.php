@@ -2,399 +2,193 @@
 
 {{-- Page title --}}
 @section('title')
-{{ trans('admin/licenses/general.view') }}
- - {{ $license->name }}
-@parent
+  {{ trans('admin/licenses/general.view') }}
+  - {{ $license->name }}
+  @parent
 @stop
 
-{{-- Right header --}}
 @section('header_right')
-<div class="btn-group pull-right">
-  @can('update', $license)
-    <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">{{ trans('button.actions') }}
-        <span class="caret"></span>
-    </button>
-    <ul class="dropdown-menu">
-        <li><a href="{{ route('licenses.edit', ['license' => $license->id]) }}">{{ trans('admin/licenses/general.edit') }}</a></li>
-        <li><a href="{{ route('clone/license', $license->id) }}">{{ trans('admin/licenses/general.clone') }}</a></li>
-    </ul>
-   @endcan
-</div>
-@stop
+    <x-button.info-panel-toggle/>
+@endsection
 
 {{-- Page content --}}
 @section('content')
-<div class="row">
-  <div class="col-md-12">
-    <!-- Custom Tabs -->
-    <div class="nav-tabs-custom">
-      <ul class="nav nav-tabs">
-        <li class="active"><a href="#details" data-toggle="tab">Details</a></li>
-        <li><a href="#uploads" data-toggle="tab">{{ trans('general.file_uploads') }}</a></li>
-        <li><a href="#history" data-toggle="tab">{{ trans('admin/licenses/general.checkout_history') }}</a></li>
-        <li class="pull-right"><a href="#" data-toggle="modal" data-target="#uploadFileModal"><i class="fa fa-paperclip"></i> {{ trans('button.upload') }}</a></li>
-      </ul>
+    <x-container columns="2">
+        <x-page-column class="col-md-9 main-panel">
+            <x-tabs>
+                <x-slot:tabnav>
 
-      <div class="tab-content">
-        <div class="tab-pane active" id="details">
-          <div class="row">
-            <div class="col-md-8">
+                    <x-tabs.nav-item
+                            name="seats"
+                            icon_type="checkedout"
+                            label="{{ trans('general.assigned') }}"
+                            count="{{ $license->assignedCount()->count() }}"
+                    />
 
-              <div class="table-responsive">
+                    @can('checkout', $license)
+                    <x-tabs.nav-item
+                            name="available"
+                            icon_type="available"
+                            label="{{ trans('general.available') }}"
+                            count="{{ $license->availCount()->count() }}"
+                    />
+                    @endcan
 
-                <table
-                        data-columns="{{ \App\Presenters\LicensePresenter::dataTableLayoutSeats() }}"
-                        data-cookie-id-table="seatsTable-{{ $license->id }}"
-                        data-id-table="seatsTable-{{ $license->id }}"
-                        id="seatsTable-{{$license->id}}"
-                        data-pagination="true"
-                        data-search="true"
-                        data-side-pagination="server"
-                        data-show-columns="true"
-                        data-show-export="true"
-                        data-show-refresh="true"
-                        data-sort-order="asc"
-                        data-sort-name="name"
-                        class="table table-striped snipe-table"
-                        data-url="{{ route('api.license.seats',['license_id' => $license->id]) }}"
-                        data-export-options='{
-                        "fileName": "export-seats-{{ str_slug($license->name) }}-{{ date('Y-m-d') }}",
-                        "ignoreColumn": ["actions","image","change","checkbox","checkincheckout","icon"]
-                        }'>
-                </table>
+                    <x-tabs.files-tab :item="$license" count="{{ $license->uploads()->count() }}"/>
+                    <x-tabs.history-tab count="{{ $license->history()->count() }}" :model="$license"/>
+                    <x-tabs.upload-tab :item="$license"/>
+                </x-slot:tabnav>
 
-              </div>
+                <x-slot:tabpanes>
 
-            </div>
+                    <x-tabs.pane name="seats">
+                        <x-slot:table_header>
+                            {{ trans('general.assigned') }}
+                        </x-slot:table_header>
 
-            <div class="col-md-4">
-              <div class="table">
-                <table class="table">
-                  <tbody>
-                    @if (!is_null($license->company))
-                    <tr>
-                      <td>{{ trans('general.company') }}</td>
-                      <td>{{ $license->company->name }}</td>
-                    </tr>
-                    @endif
+                        @can('checkin', $license)
+                        <x-slot:bulkactions>
+                            <x-table.bulk-actions
+                                name="licenseAssignedSeats"
+                                action_route="{{ route('licenses.bulkcheckin.show') }}"
+                                model_name="seat"
+                            >
+                                <option value="checkin">{{ trans('general.checkin') }}</option>
+                            </x-table.bulk-actions>
+                        </x-slot:bulkactions>
+                        @endcan
 
-                    @if ($license->manufacturer)
-                      <tr>
-                        <td>{{ trans('admin/hardware/form.manufacturer') }}:</td>
-                        <td><p style="line-height: 23px;">
-                          @can('view', \App\Models\Manufacturer::class)
-                            <a href="{{ route('manufacturers.show', $license->manufacturer->id) }}">
-                              {{ $license->manufacturer->name }}
-                            </a>
-                          @else
-                            {{ $license->manufacturer->name }}
-                          @endcan
+                        <x-table
+                            name="licenseAssignedSeats"
+                            fixed_right_number="1"
+                            fixed_number="1"
+                            api_url="{{ route('api.licenses.seats.index', [$license->id, 'status' => 'assigned']) }}"
+                            :presenter="\App\Presenters\LicensePresenter::dataTableLayoutSeats()"
+                            export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
+                        />
 
-                          @if ($license->manufacturer->url)
-                            <br><i class="fa fa-globe"></i> <a href="{{ $license->manufacturer->url }}" rel="noopener">{{ $license->manufacturer->url }}</a>
-                          @endif
-
-                          @if ($license->manufacturer->support_url)
-                            <br><i class="fa fa-life-ring"></i>
-                              <a href="{{ $license->manufacturer->support_url }}"  rel="noopener">{{ $license->manufacturer->support_url }}</a>
-                          @endif
-
-                          @if ($license->manufacturer->support_phone)
-                            <br><i class="fa fa-phone"></i>
-                              <a href="tel:{{ $license->manufacturer->support_phone }}">{{ $license->manufacturer->support_phone }}</a>
-                          @endif
-
-                          @if ($license->manufacturer->support_email)
-                            <br><i class="fa fa-envelope"></i> <a href="mailto:{{ $license->manufacturer->support_email }}">{{ $license->manufacturer->support_email }}</a>
-                          @endif
-                          </p>
-                        </td>
-                      </tr>
-                    @endif
+                    </x-tabs.pane>
 
 
-                      @if (!is_null($license->serial))
-                      <tr>
-                        <td>{{ trans('admin/licenses/form.license_key') }}: </td>
-                        <td style="word-wrap: break-word;overflow-wrap: break-word;word-break: break-word;">
-                          @can('viewKeys', $license)
-                            {!! nl2br(e($license->serial)) !!}
-                          @else
-                           ------------
-                          @endcan
+                    @can('checkout', $license)
+                    <x-tabs.pane name="available">
+                        <x-slot:table_header>
+                            {{ trans('general.available') }}
+                        </x-slot:table_header>
 
-                        </td>
-                      </tr>
-                      @endif
+                        <x-table
+                            name="licenseAvailableSeats"
+                            show_search="false"
+                            api_url="{{ route('api.licenses.seats.index', [$license->id, 'status' => 'available']) }}"
+                            :presenter="\App\Presenters\LicensePresenter::dataTableLayoutSeats(false)"
+                            export_filename="export-{{ str_slug($license->name) }}-available-{{ date('Y-m-d') }}"
+                        />
 
-                    @if ($license->category)
-                      <tr>
-                        <td>{{ trans('general.category') }}: </td>
-                        <td style="word-wrap: break-word;overflow-wrap: break-word;word-break: break-word;">
-                          <a href="{{ route('categories.show', $license->category->id) }}">{{ $license->category->name }}</a>
-                        </td>
-                      </tr>
-                    @endif
+                    </x-tabs.pane>
+                    @endcan
 
 
-                    @if ($license->license_name!='')
-                    <tr>
-                      <td>{{ trans('admin/licenses/form.to_name') }}: </td>
-                      <td>{{ $license->license_name }}</td>
-                    </tr>
-                    @endif
+                    <!-- start history tab pane -->
+                    <x-tabs.pane name="history">
+                        <x-table.history name="licenseHistory" :model="$license" :route="route('api.licenses.history', $license)"/>
+                    </x-tabs.pane>
+                    <!-- end history tab pane -->
 
-                    @if ($license->license_email!='')
-                    <tr>
-                      <td>{{ trans('admin/licenses/form.to_email') }}:</td>
-                      <td>{{ $license->license_email }}</td>
-                    </tr>
-                    @endif
 
-                    @if ($license->supplier_id)
-                    <tr>
-                      <td>{{ trans('general.supplier') }}:
-                      </td>
-                      <td>
-                        <a href="{{ route('suppliers.show', $license->supplier_id) }}">
-                          {{ $license->supplier->name }}
-                        </a>
-                      </td>
-                    </tr>
-                    @endif
+                    <!-- start files tab pane -->
+                    <x-tabs.pane name="files">
+                        <x-table.files object_type="licenses" :object="$license" />
+                    </x-tabs.pane>
+                    <!-- end files tab pane -->
 
-                    @if (isset($license->expiration_date))
-                    <tr>
-                      <td>{{ trans('admin/licenses/form.expiration') }}:</td>
-                      <td>{{ $license->expiration_date }}</td>
-                    </tr>
-                    @endif
+                </x-slot:tabpanes>
+            </x-tabs>
+        </x-page-column>
 
-                    @if ($license->depreciation)
-                      <tr>
-                        <td>
-                          {{ trans('admin/hardware/form.depreciation') }}:
-                        </td>
-                        <td>
-                          {{ $license->depreciation->name }}
-                          ({{ $license->depreciation->months }}
-                          {{ trans('admin/hardware/form.months') }}
-                          )
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          {{ trans('admin/hardware/form.depreciates_on') }}:
-                        </td>
-                        <td>
-                          {{ $license->depreciated_date()->format("Y-m-d") }}
-                        </td>
-                      </tr>
+        <x-page-column class="col-md-3">
+            <x-box class="side-box expanded">
+                <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
 
-                      <tr>
-                        <td>
-                          {{ trans('admin/hardware/form.fully_depreciated') }}:
-                        </td>
-                        <td>
-                        @if ($license->time_until_depreciated()->y > 0)
-                          {{ $license->time_until_depreciated()->y }}
-                          {{ trans('admin/hardware/form.years') }},
-                        @endif
-                        {{ $license->time_until_depreciated()->m }}
-                        {{ trans('admin/hardware/form.months') }}
-                        </td>
-                      </tr>
-                    @endif
 
-                    @if ($license->purchase_order)
-                    <tr>
-                      <td>
-                        {{ trans('admin/licenses/form.purchase_order') }}:
-                      </td>
-                      <td>
-                        {{ $license->purchase_order }}
-                      </td>
-                    </tr>
-                    @endif
+                    <x-slot:buttons>
+                        <x-button.edit :item="$license" :route="route('licenses.edit', $license->id)"/>
+                        <x-button.clone :item="$license" :route="route('clone/license', $license->id)"/>
+                        <x-button.checkout permission="checkout" :item="$license" :route="route('licenses.checkout', $license->id)" />
 
-                    @if (isset($license->purchase_date))
-                    <tr>
-                      <td>{{ trans('general.purchase_date') }}:</td>
-                      <td>{{ $license->purchase_date }}</td>
-                    </tr>
-                    @endif
+                        @can('checkout', $license)
 
-                    @if ($license->purchase_cost > 0)
-                    <tr>
-                      <td>{{ trans('general.purchase_cost') }}:</td>
-                      <td>
-                        {{ $snipeSettings->default_currency }}
-                        {{ \App\Helpers\Helper::formatCurrencyOutput($license->purchase_cost) }}
-                      </td>
-                    </tr>
-                    @endif
+                            @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
 
-                    @if ($license->order_number)
-                    <tr>
-                      <td>{{ trans('general.order_number') }}:</td>
-                      <td>{{ $license->order_number }}</td>
-                    </tr>
-                    @endif
+                                <a href="#" class="btn bg-maroon btn-sm hidden-print" data-toggle="modal" data-tooltip="true" title="{{ trans('admin/licenses/general.bulk.checkout_all.enabled_tooltip') }}" data-target="#checkoutFromAllModal">
+                                    <x-icon type="checkout-all" class="fa-fw"/>
+                                </a>
 
-                    @if (($license->seats) && ($license->seats) > 0)
-                    <tr>
-                      <td>{{ trans('admin/licenses/form.seats') }}:</td>
-                      <td>{{ $license->seats }}</td>
-                    </tr>
-                    @endif
+                            @else
+                                <span data-tooltip="true" title="{{ ($license->availCount()->count() == 0) ? trans('admin/licenses/general.bulk.checkout_all.disabled_tooltip') : trans('admin/licenses/message.checkout.license_is_inactive') }}" class="btn bg-maroon btn-sm hidden-print disabled" title="{{ trans('general.checkout') }}">
+                                      <x-icon type="checkout-all" class="fa-fw"/>
+                                  </span>
+                            @endif
+                        @endcan
 
-                    <tr>
-                      <td>{{ trans('admin/licenses/form.reassignable') }}:</td>
-                      <td>{{ $license->reassignable ? 'Yes' : 'No' }}</td>
-                    </tr>
 
-                    @if ($license->notes)
-                    <tr>
-                      <td>{{ trans('general.notes') }}:</td>
-                      <td>
-                        {!! nl2br(e($license->notes)) !!}
-                      </td>
-                    </tr>
-                    @endif
-                  </tbody>
-                </table>
-              </div> <!-- .table-->
-            </div> <!--/.col-md-5-->
-          </div> <!--/.row-->
-        </div> <!-- /.tab-pane -->
+                        @can('checkin', $license)
 
-        <div class="tab-pane" id="uploads">
-          <div class="table-responsive">
-            <table
-                data-cookie-id-table="licenseUploadsTable"
-                data-id-table="licenseUploadsTable"
-                id="licenseUploadsTable"
-                data-search="true"
-                data-pagination="true"
-                data-side-pagination="client"
-                data-show-columns="true"
-                data-show-export="true"
-                data-show-footer="true"
-                data-toolbar="#upload-toolbar"
-                data-show-refresh="true"
-                data-sort-order="asc"
-                data-sort-name="name"
-                class="table table-striped snipe-table"
-                data-export-options='{
-                    "fileName": "export-license-uploads-{{ str_slug($license->name) }}-{{ date('Y-m-d') }}",
-                    "ignoreColumn": ["actions","image","change","checkbox","checkincheckout","delete","download","icon"]
-                    }'>
-            <thead>
-              <tr>
-                <th data-visible="true"></th>
-                <th class="col-md-4" data-field="file_name" data-visible="true" data-sortable="true" data-switchable="true">{{ trans('general.file_name') }}</th>
-                <th class="col-md-4" data-field="notes" data-visible="true" data-sortable="true" data-switchable="true">{{ trans('general.notes') }}</th>
-                <th class="col-md-2" data-field="created_at" data-visible="true"  data-sortable="true" data-switchable="true">{{ trans('general.created_at') }}</th>
-                <th class="col-md-2" data-searchable="true" data-visible="true">{{ trans('general.image') }}</th>
-                <th class="col-md-2" data-field="download" data-visible="true"  data-sortable="false" data-switchable="true">Download</th>
-                <th class="col-md-2" data-field="delete" data-visible="true"  data-sortable="false" data-switchable="true">Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-            @if ($license->uploads->count() > 0)
-              @foreach ($license->uploads as $file)
-              <tr>
-                <td><i class="{{ \App\Helpers\Helper::filetype_icon($file->filename) }} icon-med"></i></td>
-                <td>
-                  {{ $file->filename }}
+                            @if (($license->seats - $license->availCount()->count()) <= 0 )
+                                <span data-tooltip="true" title=" {{ trans('admin/licenses/general.bulk.checkin_all.disabled_tooltip') }}">
+                                        <a href="#" class="btn btn-primary bg-purple btn-sm hidden-print disabled"><x-icon type="checkin-all" class="fa-fw"/></a>
+                                    </span>
+                            @else
+                                <a href="#" class="btn bg-purple btn-sm hidden-print" data-toggle="modal" data-tooltip="true" data-target="#checkinFromAllModal" data-content="{{ trans('general.sure_to_delete') }} title=" {{ trans('admin/licenses/general.bulk.checkin_all.button') }} data-title=" {{ trans('admin/licenses/general.bulk.checkin_all.button') }}">
+                                    <x-icon type="checkin-all" class="fa-fw"/>
+                                </a>
+                            @endif
+                        @endcan
 
-                </td>
-                <td>
-                  @if ($file->note)
-                    {{ $file->note }}
-                  @endif
-                </td>
-                <td>{{ $file->created_at }}</td>
-                <td>
-                @if ($file->filename)
-                    @if ( \App\Helpers\Helper::checkUploadIsImage($file->get_src('licenses')))
-                      <a href="{{ route('show.licensefile', ['licenseId' => $license->id, 'fileId' => $file->id, 'download' => 'false']) }}" data-toggle="lightbox" data-type="image"><img src="{{ route('show.licensefile', ['licenseId' => $license->id, 'fileId' => $file->id]) }}" class="img-thumbnail" style="max-width: 50px;"></a>
-                    @endif
-                @endif
-                </td>
-                <td>
-                  @if ($file->filename)
-                    <a href="{{ route('show.licensefile', [$license->id, $file->id, 'download' => 'true']) }}" class="btn btn-default"><i class="fa fa-download"></i></a>
-                  @endif
-                </td>
-                <td>
-                  <a class="btn delete-asset btn-danger btn-sm" href="{{ route('delete/licensefile', [$license->id, $file->id]) }}" data-content="Are you sure you wish to delete this file?" data-title="Delete {{ $file->filename }}?"><i class="fa fa-trash icon-white"></i></a>
-                </td>
-              </tr>
-              @endforeach
-            @else
-              <tr>
-              <td colspan="6">{{ trans('general.no_results') }}</td>
-              </tr>
-            @endif
-            </tbody>
-          </table>
-          </div>
-        </div> <!-- /.tab-pane -->
 
-        <div class="tab-pane" id="history">
-          <div class="row">
-            <div class="col-md-12">
-              <div class="table-responsive">
-              <table
-                      class="table table-striped snipe-table"
-                      data-cookie-id-table="licenseHistoryTable"
-                      data-id-table="licenseHistoryTable"
-                      id="licenseHistoryTable"
-                      data-pagination="true"
-                      data-show-columns="true"
-                      data-side-pagination="server"
-                      data-show-refresh="true"
-                      data-show-export="true"
-                      data-sort-order="desc"
-                      data-export-options='{
-                       "fileName": "export-{{ str_slug($license->name) }}-history-{{ date('Y-m-d') }}",
-                       "ignoreColumn": ["actions","image","change","checkbox","checkincheckout","icon"]
-                     }'
-                      data-url="{{ route('api.activity.index', ['item_id' => $license->id, 'item_type' => 'license']) }}">
+                        <x-button.delete :item="$license" />
 
-                <thead>
-                <tr>
-                  <th class="col-sm-2" data-visible="false" data-sortable="true" data-field="created_at" data-formatter="dateDisplayFormatter">{{ trans('general.record_created') }}</th>
-                  <th class="col-sm-2"data-visible="true" data-sortable="true" data-field="admin" data-formatter="usersLinkObjFormatter">{{ trans('general.admin') }}</th>
-                  <th class="col-sm-2" data-sortable="true"  data-visible="true" data-field="action_type">{{ trans('general.action') }}</th>
-                  <th class="col-sm-2" data-sortable="true"  data-visible="true" data-field="item" data-formatter="polymorphicItemFormatter">{{ trans('general.item') }}</th>
-                  <th class="col-sm-2" data-visible="true" data-field="target" data-formatter="polymorphicItemFormatter">{{ trans('general.target') }}</th>
-                  <th class="col-sm-2" data-sortable="true" data-visible="true" data-field="note">{{ trans('general.notes') }}</th>
-                  <th class="col-sm-2" data-visible="true" data-field="action_date" data-formatter="dateDisplayFormatter">{{ trans('general.date') }}</th>
-                  @if  ($snipeSettings->require_accept_signature=='1')
-                    <th class="col-md-3" data-field="signature_file" data-visible="false"  data-formatter="imageFormatter">{{ trans('general.signature') }}</th>
-                  @endif
-                </tr>
-                </thead>
-              </table>
-              </div>
-            </div> <!-- /.col-md-12-->
-          </div> <!-- /.row-->
-        </div> <!-- /.tab-pane -->
-      </div> <!-- /.tab-content -->
-    </div> <!-- nav-tabs-custom -->
-  </div>  <!-- /.col -->
-</div> <!-- /.row -->
 
-@can('update', \App\Models\License::class)
-  @include ('modals.upload-file', ['item_type' => 'license', 'item_id' => $license->id])
+                    </x-slot:buttons>
+
+
+                    <x-slot:before_list>
+
+
+
+
+                    </x-slot:before_list>
+                </x-info-panel>
+            </x-box>
+
+        </x-page-column>
+    </x-container>
+
+@can('checkin', \App\Models\License::class)
+    <x-modals.confirm-action
+        modal-name="checkinFromAllModal"
+        :route="route('licenses.bulkcheckin', $license->id)"
+        :title="trans('general.modal_confirm_generic')"
+    >
+        {{ trans_choice('admin/licenses/general.bulk.checkin_all.modal', 2, ['checkedout_seats_count' => $checkedout_seats_count]) }}
+    </x-modals.confirm-action>
 @endcan
 
-@stop
+@can('checkout', \App\Models\License::class)
+    <x-modals.confirm-action
+        modal-name="checkoutFromAllModal"
+        :route="route('licenses.bulkcheckout', $license->id)"
+        :title="trans('general.modal_confirm_generic')"
+    >
+        {{ trans_choice('admin/licenses/general.bulk.checkout_all.modal', 2, ['available_seats_count' => $available_seats_count]) }}
+    </x-modals.confirm-action>
+@endcan
 
+@endsection
 
 @section('moar_scripts')
-  @include ('partials.bootstrap-table')
-@stop
+    @can('files', $license)
+        <x-modals.upload-file item-type="licenses" :item-id="$license->id" />
+    @endcan
 
+    @include ('partials.bootstrap-table')
+@endsection

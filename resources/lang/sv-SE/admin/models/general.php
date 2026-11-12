@@ -1,18 +1,22 @@
 <?php
 
-return array(
-    'about_models_title'     => 'Om tillgångsmodeller',
-    'about_models_text'           => 'Tillgångsmodeller är ett sätt att gruppera identiska tillgångar. "MBP 2013", "IPhone 6s", etc.',
-    'deleted'  					        => 'Den här modellen har tagits bort. <a href="/hardware/models/:model_id/restore">Klicka här för att återskapa</a>.',
-    'bulk_delete'               => 'Bulk Radera tillgångsmodeller',
-    'bulk_delete_help'               => 'Use the checkboxes below to confirm the deletion of the selected asset models. Asset models that have assets associated with them cannot be deleted until the assets are associated with a different model.',
-    'bulk_delete_warn'          => 'You are about to delete :model_count asset models.',
-    'restore'                   => 'Återskapa Modell',
-    'requestable'               => 'Användare kan begära denna modell',
-	'show_mac_address'			      => 'Visa fältet MAC-adress för inventarier av denna modell',
-    'view_deleted'              => 'Visa Borttagna',
-    'view_models'               => 'Visa Modeller',
-    'fieldset'                  => 'Fältsamling',
-    'no_custom_field'           => 'Inga anpassade fält',
-    'add_default_values'        => 'Lägg till standardvärden',
-);
+return [
+    'about_models_title' => 'Om modeller',
+    'about_models_text' => 'Modeller är ett sätt att gruppera identiska tillgångar. "Galaxy S24", "iPhone 15", etc.',
+    'deleted' => 'Denna modell har tagits bort.',
+    'bulk_delete' => 'Massradera modeller',
+    'bulk_delete_help' => 'Använd kryssrutan nedan för att bekräfta borttagning av valda modeller. Modeller som har tillgångar kopplade till sig kan inte raderas innan dessa är kopplade till en annan modell.',
+    'bulk_delete_warn' => 'Du håller på att ta bort en tillgångsmodell.|Du håller på att ta bort :model_count tillgångsmodeller.',
+    'restore' => 'Återskapa modell',
+    'requestable' => 'Användare kan begära denna modell',
+    'show_mac_address' => 'Visa MAC-adress i fältet för tillgångar av denna modell',
+    'view_deleted' => 'Visa borttagna',
+    'view_models' => 'Visa modeller',
+    'fieldset' => 'Fältuppsättning',
+    'no_custom_field' => 'Inga egenanpassade fält',
+    'add_default_values' => 'Lägg till standardvärden',
+    'importer' => [
+        'require_serial' => 'Kräv serienummer',
+        'serial_required' => 'Serienummer krävs',
+    ],
+];

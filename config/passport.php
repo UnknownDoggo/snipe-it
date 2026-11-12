@@ -1,4 +1,5 @@
 <?php
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -12,4 +13,6 @@ return [
     */
     'private_key' => env('PASSPORT_PRIVATE_KEY'),
     'public_key' => env('PASSPORT_PUBLIC_KEY'),
+    'expiration_years' => env('API_TOKEN_EXPIRATION_YEARS', 20),
+    'cookie_name' => env('PASSPORT_COOKIE_NAME', 'snipeit_passport_token'),
 ];

@@ -2,81 +2,71 @@
 
 namespace App\Notifications;
 
+use App\Helpers\Helper;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Symfony\Component\Mime\Email;
 
-class ExpectedCheckinNotification extends Notification
+class ExpectedCheckinNotification extends Notification implements ShouldQueue
 {
     use Queueable;
-    /**
-     * @var
-     */
-    private $params;
-
+    
     /**
      * Create a new notification instance.
-     *
-     * @param $params
      */
-    public function __construct($params)
+    public function __construct(
+        public $params
+    )
     {
-        $this->params = $params;
     }
 
     /**
      * Get the notification's delivery channels.
      *
-     * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via()
     {
         $notifyBy = [];
         $item = $this->params['item'];
 
-        $notifyBy[]='mail';
+        $notifyBy[] = 'mail';
+
         return $notifyBy;
-    }
-
-    public function toSlack($notifiable)
-    {
-
     }
 
     /**
      * Get the mail representation of the notification.
      *
-     * @param  mixed  $asset
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
-    public function toMail($params)
+    public function toMail()
     {
-        $formatted_due = Carbon::parse($this->params->expected_checkin)->format('D,  M j, Y');
-        return (new MailMessage)
-            ->error()
-            ->subject('Reminder: '.$this->params->present()->name().' checkin deadline approaching')
-            ->line('Hi, '.$this->params->assignedto->first_name.' '.$this->params->assignedto->last_name)
-            ->greeting('An asset checked out to you is due to be checked back in on '.$formatted_due.'.')
-            ->line('Asset: '.$this->params->present()->name())
-            ->line('Serial: '.$this->params->serial)
-            ->line('Asset Tag: '.$this->params->asset_tag)
-            ->action('View Your Assets', route('view-assets'));
+        $today = Carbon::today();
+        $expected = Carbon::parse($this->params->expected_checkin)->startOfDay();
 
+        $subjectText = $today->greaterThan($expected)
+            ? trans('mail.Expected_Checkin_Notification_Pastdue', ['name' => $this->params->display_name])
+            : trans('mail.Expected_Checkin_Notification', ['name' => $this->params->display_name]);
 
-    }
+        $message = (new MailMessage)->markdown('notifications.markdown.expected-checkin',
+            [
+                'expected_checkin_date' => $this->params->expected_checkin,
+                'date' => Helper::getFormattedDateObject($this->params->expected_checkin, 'datetime', false),
+                'asset' => $this->params->display_name,
+                'serial' => $this->params->serial,
+                'asset_tag' => $this->params->asset_tag,
+            ])
+            ->subject('⏰'.$subjectText)
+            ->withSymfonyMessage(function (Email $message) {
+                $message->getHeaders()->addTextHeader(
+                    'X-System-Sender', 'Snipe-IT'
+                );
+            });
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
-    public function toArray($notifiable)
-    {
-        return [
-            //
-        ];
+        return $message;
     }
 }

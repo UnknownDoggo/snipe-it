@@ -1,37 +1,44 @@
 <?php
 
-return array(
+return [
 
-    'account_already_exists' => '此信箱已被註冊',
-    'account_not_found'      => '使用者或密碼錯誤',
-    'account_not_activated'  => '使用者尚未啟用',
-    'account_suspended'      => '使用者已被停用',
-    'account_banned'         => '使用者已被禁用',
-    'throttle'               => '嘗試登入的失敗次數太多。請 :minutes 分鐘後再試。',
+    'account_already_exists' => 'An account with the this email already exists.',
+    'account_not_found' => 'The username or password is incorrect.',
+    'account_not_activated' => 'This user account is not activated.',
+    'account_suspended' => 'This user account is suspended.',
 
-    'signin' => array(
-        'error'   => '登入過程中發生問題，請重試',
-        'success' => '登入成功',
-    ),
+    'two_factor' => [
+        'already_enrolled' => 'Your device is already enrolled.',
+        'success' => 'You have successfully logged in.',
+        'code_required' => 'Two-factor code is required.',
+        'invalid_code' => 'Two-factor code is invalid.',
+        'enter_two_factor_code' => 'Please enter your two-factor authentication code.',
+        'please_enroll' => 'Please enroll a device in two-factor authentication.',
+    ],
 
-    'signup' => array(
-        'error'   => '在新增帳戶時發生問題，請重試',
-        'success' => '新增帳戶成功。',
-    ),
+    'signin' => [
+        'error' => 'There was a problem while trying to log you in, please try again.',
+        'success' => 'You have successfully logged in.',
+    ],
 
-        'forgot-password' => array(
-            'error'   => '在重設密碼時發生問題，請重試',
-            'success' => '密碼重設郵件已寄出。',
-        ),
+    'logout' => [
+        'error' => 'There was a problem while trying to log you out, please try again.',
+        'success' => 'You have successfully logged out.',
+    ],
 
-        'forgot-password-confirm' => array(
-            'error'   => '在重設密碼時發生問題，請重試',
-            'success' => '密碼重設成功。',
-        ),
+    'signup' => [
+        'error' => 'There was a problem while trying to create your account, please try again.',
+        'success' => 'Account sucessfully created.',
+    ],
 
-    'activate' => array(
-        'error'   => '在啟用帳戶時發生問題，請重試',
-        'success' => '帳戶已啟用。',
-    ),
+    'forgot-password' => [
+        'error' => 'There was a problem while trying to get a reset password code, please try again.',
+        'success' => 'If that email address exists in our system, a password recovery email has been sent.',
+    ],
 
-);
+    'forgot-password-confirm' => [
+        'error' => 'There was a problem while trying to reset your password, please try again.',
+        'success' => 'Your password has been successfully reset.',
+    ],
+
+];

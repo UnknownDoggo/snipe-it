@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ResetPasswordController extends Controller
 {
@@ -28,6 +32,8 @@ class ResetPasswordController extends Controller
      */
     protected $redirectTo = '/';
 
+    protected $username = 'username';
+
     /**
      * Create a new controller instance.
      *
@@ -36,6 +42,7 @@ class ResetPasswordController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+        $this->middleware('throttle:10,1');
     }
 
     protected function rules()
@@ -43,10 +50,9 @@ class ResetPasswordController extends Controller
         return [
             'token' => 'required',
             'username' => 'required',
-            'password' => 'required|confirmed|min:6',
+            'password' => 'confirmed|'.Setting::passwordComplexityRulesSaving('store'),
         ];
     }
-
 
     protected function credentials(Request $request)
     {
@@ -54,20 +60,73 @@ class ResetPasswordController extends Controller
             'username', 'password', 'password_confirmation', 'token'
         );
     }
-    
 
     public function showResetForm(Request $request, $token = null)
     {
+        /*
+         * Always render the form, regardless of whether the supplied email
+         * resolves to an account to prevent email oracle.
+         * Token + user validation now happens only in reset(),
+         * which already returns identical responses for valid and invalid credentials.
+         */
         return view('auth.passwords.reset')->with(
-            ['token' => $token, 'username' => $request->input('username')]
+            [
+                'token' => $token,
+                'username' => $request->input('username'),
+            ]
         );
     }
 
-    protected function sendResetFailedResponse(Request $request, $response)
+    public function reset(Request $request)
     {
-        return redirect()->back()
-            ->withInput(['username'=>$request->input('username')])
-            ->withErrors(['username' => trans($response)]);
-    }
 
+        $broker = $this->broker();
+
+        $messages = [
+            'password.not_in' => trans('validation.disallow_same_pwd_as_user_fields'),
+        ];
+
+        $request->validate($this->rules());
+
+        Log::debug('Checking if '.$request->input('username').' exists');
+        // Check to see if the user even exists - we'll treat the response the same to prevent user sniffing
+        if ($user = User::where('username', '=', $request->input('username'))->where('activated', '1')->whereNotNull('email')->first()) {
+            Log::debug($user->username.' exists');
+
+            // handle the password validation rules set by the admin settings
+            if (strpos(Setting::passwordComplexityRulesSaving('store'), 'disallow_same_pwd_as_user_fields') !== false) {
+                $request->validate(
+                    [
+                        'password' => 'required|notIn:["'.$user->email.'","'.$user->username.'","'.$user->first_name.'","'.$user->last_name.'"',
+                    ], $messages);
+            }
+
+            if ($user->ldap_import != '1') {
+
+                // set the response
+                $response = $broker->reset(
+                    $this->credentials($request), function ($user, $password) {
+                        $this->resetPassword($user, $password);
+                    });
+
+                // Check if the password reset above actually worked
+                if ($response == \Password::PASSWORD_RESET) {
+                    Log::debug('Password reset for '.$user->username.' worked');
+
+                    return redirect()->guest('login')->with('success', trans('passwords.reset'));
+                }
+
+                Log::debug('Password reset for '.$user->username.' FAILED - this user exists but the token is not valid');
+
+                return redirect()->to(Helper::sameOriginUrl(url()->previous()) ?? route('login'))
+                    ->withInput($request->only('email'))->with('success', trans('passwords.reset'));
+            }
+
+        }
+
+        Log::debug('Password reset for '.$request->input('username').' FAILED - user does not exist or does not have an email address - but make it look like it succeeded');
+
+        return redirect()->guest('login')->with('success', trans('passwords.reset'));
+
+    }
 }

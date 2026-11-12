@@ -2,13 +2,13 @@
 
 namespace App\Notifications;
 
-use App\Models\Setting;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+use Symfony\Component\Mime\Email;
 
-class SendUpcomingAuditNotification extends Notification
+class SendUpcomingAuditNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -17,19 +17,19 @@ class SendUpcomingAuditNotification extends Notification
      *
      * @return void
      */
-    public function __construct($params, $threshold)
+    public function __construct(
+        public $assets,
+        public $threshold
+    )
     {
-        $this->assets = $params;
-        $this->threshold = $threshold;
     }
 
     /**
      * Get the notification's delivery channels.
      *
-     * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via()
     {
         return $notifyBy = ['mail'];
     }
@@ -37,31 +37,22 @@ class SendUpcomingAuditNotification extends Notification
     /**
      * Get the mail representation of the notification.
      *
-     * @param  mixed  $notifiable
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
-    public function toMail($notifiable)
+    public function toMail()
     {
         $message = (new MailMessage)->markdown('notifications.markdown.upcoming-audits',
             [
-                'assets'  => $this->assets,
-                'threshold'  => $this->threshold,
+                'assets' => $this->assets,
+                'threshold' => $this->threshold,
             ])
-            ->subject(trans_choice('mail.upcoming-audits', $this->assets->count(), ['count' => $this->assets->count(), 'threshold' => $this->threshold]));
+            ->subject('⏰'.trans_choice('mail.upcoming-audits', $this->assets->count(), ['count' => $this->assets->count(), 'threshold' => $this->threshold]))
+            ->withSymfonyMessage(function (Email $message) {
+                $message->getHeaders()->addTextHeader(
+                    'X-System-Sender', 'Snipe-IT'
+                );
+            });
 
         return $message;
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
-    public function toArray($notifiable)
-    {
-        return [
-            //
-        ];
     }
 }

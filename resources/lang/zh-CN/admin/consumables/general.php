@@ -1,13 +1,15 @@
 <?php
 
-return array(
-    'about_consumables_title' 			=> '关于耗材',
-    'about_consumables_text'  			=> '所谓耗材是指从购买后会慢慢消耗并最终用尽的物品，例如打印机墨水，复印纸等等。',
-    'checkout'                          => '领取耗材给使用者',
-    'consumable_name'                   => '耗材名称',
-    'create'                            => '创建耗材',
-    'item_no'                           => '项目编号',
-    'remaining' 			            => '剩余',
-    'total' 			                => '总计',
-    'update'                            => '更新耗材',
-);
+return [
+    'checkout' => '签出耗材给使用者',
+    'consumable_name' => '耗材名称',
+    'create' => '创建耗材',
+    'item_no' => '项目编号',
+    'remaining' => '剩余',
+    'total' => '总计',
+    'update' => '更新耗材',
+    'inventory_warning' => '该耗材的库存低于最低数量 :min_count',
+    'exclude_deleted' => 'Exclude Deleted Consumables',
+    'include_deleted' => 'Include Deleted Consumables',
+    'only_deleted' => 'Only Deleted Consumables',
+];

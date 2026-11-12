@@ -1,14 +1,22 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
+use App\Enums\FileStorage;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ImageUploadRequest;
+use App\Http\Requests\StoreAssetModelRequest;
+use App\Http\Transformers\ActionlogsTransformer;
 use App\Http\Transformers\AssetModelsTransformer;
 use App\Http\Transformers\AssetsTransformer;
 use App\Http\Transformers\SelectlistTransformer;
 use App\Models\Asset;
 use App\Models\AssetModel;
+use App\Models\Setting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -16,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
  * the Snipe-IT Asset Management application.
  *
  * @version    v4.0
+ *
  * @author [A. Gianotto] [<snipe@snipe.net>]
  */
 class AssetModelsController extends Controller
@@ -24,85 +33,166 @@ class AssetModelsController extends Controller
      * Display a listing of the resource.
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
-     * @return \Illuminate\Http\Response
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse|array
     {
         $this->authorize('view', AssetModel::class);
-        $allowed_columns = ['id','image','name','model_number','eol','notes','created_at','manufacturer','requestable', 'assets_count'];
+        $allowed_columns =
+            [
+                'id',
+                'image',
+                'name',
+                'model_number',
+                'mfg_marketing_name',
+                'mfg_release_date',
+                'mfg_discontinued_date',
+                'min_amt',
+                'eol',
+                'notes',
+                'created_at',
+                'manufacturer',
+                'requestable',
+                'assets_count',
+                'assets_assigned_count',
+                'assets_archived_count',
+                'remaining',
+                'category',
+                'fieldset',
+                'deleted_at',
+                'updated_at',
+                'require_serial',
+                // These are *relationships* so we wouldn't normally include them in this array,
+                // since they would normally create a `column not found` error,
+                // BUT we account for them in the ordering switch down at the end of this method
+                // DO NOT ADD ANYTHING TO THIS LIST WITHOUT CHECKING THE ORDERING SWITCH BELOW!
+                'manufacturer',
+                'category',
+            ];
 
         $assetmodels = AssetModel::select([
             'models.id',
             'models.image',
             'models.name',
-            'model_number',
-            'eol',
-            'requestable',
+            'models.model_number',
+            'models.mfg_marketing_name',
+            'models.mfg_release_date',
+            'models.mfg_discontinued_date',
+            'models.min_amt',
+            'models.eol',
+            'models.created_by',
+            'models.requestable',
             'models.notes',
             'models.created_at',
-            'category_id',
-            'manufacturer_id',
-            'depreciation_id',
-            'fieldset_id',
+            'models.category_id',
+            'models.manufacturer_id',
+            'models.depreciation_id',
+            'models.fieldset_id',
             'models.deleted_at',
             'models.updated_at',
-         ])
-            ->with('category','depreciation', 'manufacturer','fieldset')
-            ->withCount('assets as assets_count');
+            'models.require_serial',
+        ])
+            ->with('category', 'depreciation', 'manufacturer', 'fieldset.fields.defaultValues', 'adminuser')
+            ->withCount('assets as assets_count')
+            ->withCount('availableAssets as remaining')
+            ->withCount('assignedAssets as assets_assigned_count')
+            ->withCount('archivedAssets as assets_archived_count');
 
+        // This invokes the Searchable model trait scopeTextSearch and will handle input by search or by advanced search filter
+        if ($request->filled('filter') || $request->filled('search')) {
+            $assetmodels->TextSearch($request->input('filter') ? $request->input('filter') : $request->input('search'));
+        }
 
-
-        if ($request->filled('status')) {
+        if ($request->input('status') == 'deleted') {
             $assetmodels->onlyTrashed();
+        }
+
+        if ($request->filled('name')) {
+            $assetmodels = $assetmodels->where('models.name', '=', $request->input('name'));
+        }
+
+        if ($request->filled('model_number')) {
+            $assetmodels = $assetmodels->where('models.model_number', '=', $request->input('model_number'));
+        }
+
+        if ($request->input('requestable') == 'true') {
+            $assetmodels = $assetmodels->where('models.requestable', '=', '1');
+        } elseif ($request->input('requestable') == 'false') {
+            $assetmodels = $assetmodels->where('models.requestable', '=', '0');
+        }
+
+        if ($request->filled('notes')) {
+            $assetmodels = $assetmodels->where('models.notes', '=', $request->input('notes'));
+        }
+
+        if ($request->filled('category_id')) {
+            $assetmodels = $assetmodels->where('models.category_id', '=', $request->input('category_id'));
+        }
+
+        if ($request->filled('depreciation_id')) {
+            $assetmodels = $assetmodels->where('models.depreciation_id', '=', $request->input('depreciation_id'));
         }
 
         if ($request->filled('search')) {
             $assetmodels->TextSearch($request->input('search'));
         }
 
-        $offset = (($assetmodels) && (request('offset') > $assetmodels->count())) ? 0 : request('offset', 0);
-
-        // Check to make sure the limit is not higher than the max allowed
-        ((config('app.max_results') >= $request->input('limit')) && ($request->filled('limit'))) ? $limit = $request->input('limit') : $limit = config('app.max_results');
+        // Make sure the offset and limit are actually integers and do not exceed system limits
+        $total = $assetmodels->count();
+        $offset = ($request->input('offset') > $total) ? $total : app('api_offset_value');
+        $limit = app('api_limit_value');
 
         $order = $request->input('order') === 'asc' ? 'asc' : 'desc';
         $sort = in_array($request->input('sort'), $allowed_columns) ? $request->input('sort') : 'models.created_at';
 
-        switch ($sort) {
+        switch ($request->input('sort')) {
             case 'manufacturer':
                 $assetmodels->OrderManufacturer($order);
+                break;
+            case 'category':
+                $assetmodels->OrderCategory($order);
+                break;
+            case 'fieldset':
+                $assetmodels->OrderFieldset($order);
+                break;
+            case 'created_by':
+                $assetmodels->OrderByCreatedByName($order);
+                break;
+            case 'depreciation':
+                $assetmodels->leftJoin('depreciations as depreciation_sort', 'models.depreciation_id', '=', 'depreciation_sort.id')->orderBy('depreciation_sort.name', $order);
+                break;
+            case 'percent_remaining':
+                $assetmodels->OrderPercentRemaining($order);
                 break;
             default:
                 $assetmodels->orderBy($sort, $order);
                 break;
         }
 
-
-
-        $total = $assetmodels->count();
         $assetmodels = $assetmodels->skip($offset)->take($limit)->get();
+
         return (new AssetModelsTransformer)->transformAssetModels($assetmodels, $total);
     }
-
 
     /**
      * Store a newly created resource in storage.
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(StoreAssetModelRequest $request): JsonResponse
     {
         $this->authorize('create', AssetModel::class);
         $assetmodel = new AssetModel;
         $assetmodel->fill($request->all());
+        $assetmodel = $request->handleImages($assetmodel);
 
         if ($assetmodel->save()) {
-            return response()->json(Helper::formatStandardApiResponse('success', $assetmodel, trans('admin/models/message.create.success')));
+            return response()->json(Helper::formatStandardApiResponse('success', (new AssetModelsTransformer)->transformAssetModel($assetmodel), trans('admin/models/message.create.success')));
         }
+
         return response()->json(Helper::formatStandardApiResponse('error', null, $assetmodel->getErrors()));
 
     }
@@ -111,14 +201,16 @@ class AssetModelsController extends Controller
      * Display the specified resource.
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
+     *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($id): array
     {
         $this->authorize('view', AssetModel::class);
         $assetmodel = AssetModel::withCount('assets as assets_count')->findOrFail($id);
+
         return (new AssetModelsTransformer)->transformAssetModel($assetmodel);
     }
 
@@ -126,36 +218,80 @@ class AssetModelsController extends Controller
      * Display the specified resource's assets
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
+     *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
-    public function assets($id)
+    public function assets(Request $request, $id): JsonResponse|array
     {
-        $this->authorize('view', AssetModel::class);
-        $assets = Asset::where('model_id','=',$id)->get();
-        return (new AssetsTransformer)->transformAssets($assets, $assets->count());
-    }
 
+        $this->authorize('view', AssetModel::class);
+        $this->authorize('view', Asset::class);
+        $model = AssetModel::findOrFail($id);
+
+        // Eager-load the same relations AssetsTransformer walks per row.
+        // Without this, a page of 500 assets triggers 500-plus follow-up
+        // queries for status, company, assignedTo, adminuser, and the
+        // model / manufacturer / category chain the transformer expands
+        // on each row.
+        $assets = Asset::where('model_id', $model->id)
+            ->with(
+                'model',
+                'model.category',
+                'model.manufacturer',
+                'model.depreciation',
+                'model.fieldset',
+                'location',
+                'defaultLoc',
+                'status',
+                'company',
+                'assignedTo',
+                'adminuser',
+                'supplier',
+            );
+
+        $total = $assets->count();
+        $offset = ($request->input('offset') > $total) ? $total : app('api_offset_value');
+        $limit = app('api_limit_value');
+
+        $assets = $assets->skip($offset)->take($limit)->get();
+
+        return (new AssetsTransformer)->transformAssets($assets, $total);
+    }
 
     /**
      * Update the specified resource in storage.
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
-     * @param  \Illuminate\Http\Request  $request
+     *
+     * @param  ImageUploadRequest  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
-    public function update(Request $request, $id)
+    public function update(StoreAssetModelRequest $request, $id): JsonResponse
     {
         $this->authorize('update', AssetModel::class);
         $assetmodel = AssetModel::findOrFail($id);
         $assetmodel->fill($request->all());
-        $assetmodel->fieldset_id = $request->get("custom_fieldset_id");
+        $assetmodel = $request->handleImages($assetmodel);
+
+        /**
+         * Allow custom_fieldset_id to override and populate fieldset_id.
+         * This is stupid, but required for legacy API support.
+         *
+         * I have no idea why we manually overrode that field name
+         * in previous versions. I assume there was a good reason for
+         * it, but I'll be damned if I can think of one. - snipe
+         */
+        if ($request->filled('custom_fieldset_id')) {
+            $assetmodel->fieldset_id = $request->input('custom_fieldset_id');
+        }
 
         if ($assetmodel->save()) {
-            return response()->json(Helper::formatStandardApiResponse('success', $assetmodel, trans('admin/models/message.update.success')));
+            return response()->json(Helper::formatStandardApiResponse('success', (new AssetModelsTransformer)->transformAssetModel($assetmodel), trans('admin/models/message.update.success')));
         }
 
         return response()->json(Helper::formatStandardApiResponse('error', null, $assetmodel->getErrors()));
@@ -165,44 +301,69 @@ class AssetModelsController extends Controller
      * Remove the specified resource from storage.
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
+     *
      * @since [v4.0]
+     *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         $this->authorize('delete', AssetModel::class);
         $assetmodel = AssetModel::findOrFail($id);
         $this->authorize('delete', $assetmodel);
 
         if ($assetmodel->assets()->count() > 0) {
-            return response()->json(Helper::formatStandardApiResponse('error', null,  trans('admin/models/message.assoc_users')));
+            return response()->json(Helper::formatStandardApiResponse('error', null, trans('admin/models/message.assoc_users')));
         }
 
-        if ($assetmodel->image) {
-            try  {
-                Storage::disk('public')->delete('assetmodels/'.$assetmodel->image);
-            } catch (\Exception $e) {
-                \Log::info($e);
-            }
-        }
-
+        // Note: the image file is deliberately preserved across this
+        // soft-delete. Snipe-IT's `snipeit:purge` command permanently
+        // removes it later when the row is force-deleted. Keeping the
+        // file here means a restored soft-deleted row still has its
+        // image. Also fixes a latent path bug: the old delete used
+        // `assetmodels/` but handleImages stores under `models/`, so
+        // the unlink here was silently missing the file anyway.
         $assetmodel->delete();
-        return response()->json(Helper::formatStandardApiResponse('success', null,  trans('admin/models/message.delete.success')));
 
+        return response()->json(Helper::formatStandardApiResponse('success', null, trans('admin/models/message.delete.success')));
+    }
+
+    /**
+     * Restore a soft-deleted asset model.
+     */
+    public function restore($id): JsonResponse
+    {
+        $this->authorize('delete', AssetModel::class);
+
+        if ($assetmodel = AssetModel::withTrashed()->find($id)) {
+
+            if ($assetmodel->deleted_at == '') {
+                return response()->json(Helper::formatStandardApiResponse('error', null, trans('general.not_deleted', ['item_type' => trans('general.asset_model')])), 200);
+            }
+
+            // The `restore` action_log entry is written by Loggable during restore
+            if ($assetmodel->restore()) {
+                return response()->json(Helper::formatStandardApiResponse('success', null, trans('admin/models/message.restore.success')), 200);
+            }
+
+            return response()->json(Helper::formatStandardApiResponse('error', null, trans('general.could_not_restore', ['item_type' => trans('general.asset_model'), 'error' => $assetmodel->getErrors()->first()])), 200);
+        }
+
+        return response()->json(Helper::formatStandardApiResponse('error', null, trans('admin/models/message.does_not_exist')), 200);
     }
 
     /**
      * Gets a paginated collection for the select2 menus
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
-     * @since [v4.0.16]
-     * @see \App\Http\Transformers\SelectlistTransformer
      *
+     * @since [v4.0.16]
+     * @see SelectlistTransformer
      */
-    public function selectlist(Request $request)
+    public function selectlist(Request $request): array
     {
 
+        $this->authorize('view.selectlists');
         $assetmodels = AssetModel::select([
             'models.id',
             'models.name',
@@ -210,9 +371,9 @@ class AssetModelsController extends Controller
             'models.model_number',
             'models.manufacturer_id',
             'models.category_id',
-        ])->with('manufacturer','category');
+        ])->with('manufacturer', 'category');
 
-        $settings = \App\Models\Setting::getSettings();
+        $settings = Setting::getSettings();
 
         if ($request->filled('search')) {
             $assetmodels = $assetmodels->SearchByManufacturerOrCat($request->input('search'));
@@ -221,27 +382,75 @@ class AssetModelsController extends Controller
         $assetmodels = $assetmodels->OrderCategory('ASC')->OrderManufacturer('ASC')->orderby('models.name', 'asc')->orderby('models.model_number', 'asc')->paginate(50);
 
         foreach ($assetmodels as $assetmodel) {
-
             $assetmodel->use_text = '';
 
             if ($settings->modellistCheckedValue('category')) {
-                $assetmodel->use_text .= (($assetmodel->category) ? e($assetmodel->category->name).' - ' : '');
+                $assetmodel->use_text .= (($assetmodel->category) ? $assetmodel->category->name.' - ' : '');
             }
 
             if ($settings->modellistCheckedValue('manufacturer')) {
-                $assetmodel->use_text .= (($assetmodel->manufacturer) ? e($assetmodel->manufacturer->name).' ' : '');
+                $assetmodel->use_text .= (($assetmodel->manufacturer) ? $assetmodel->manufacturer->name.' ' : '');
             }
 
-            $assetmodel->use_text .=  e($assetmodel->name);
+            $assetmodel->use_text .= $assetmodel->name;
 
-            if (($settings->modellistCheckedValue('model_number')) && ($assetmodel->model_number!='')) {
-                $assetmodel->use_text .=  ' (#'.e($assetmodel->model_number).')';
+            if (($settings->modellistCheckedValue('model_number')) && ($assetmodel->model_number != '')) {
+                $assetmodel->use_text .= ' (#'.$assetmodel->model_number.')';
             }
 
-            $assetmodel->use_image = ($settings->modellistCheckedValue('image') && ($assetmodel->image)) ? Storage::disk('public')->url('assetmodels/'.e($assetmodel->image)) : null;
+            $assetmodel->use_image = ($settings->modellistCheckedValue('image') && ($assetmodel->image)) ? Storage::disk('public')->url(FileStorage::Models->publicPath().e($assetmodel->image)) : null;
         }
 
         return (new SelectlistTransformer)->transformSelectlist($assetmodels);
     }
 
+    public function history(Request $request, AssetModel $model): JsonResponse|array
+    {
+        $this->authorize('history', $model);
+        $historyQuery = $model->getHistory($request);
+        $total = (clone $historyQuery)->count();
+        $offset = ($request->input('offset') > $total) ? $total : app('api_offset_value');
+        $limit = app('api_limit_value');
+        $history = (clone $historyQuery)->skip($offset)->take($limit)->get();
+
+        return response()->json((new ActionlogsTransformer)->transformActionlogs($history, $total), 200, ['Content-Type' => 'application/json;charset=utf8'], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * List asset models that are requestable AND reachable by the
+     * current caller (per FMCS + location scoping). Hydrates the
+     * models tab on /account/requestable so the shell page can drop
+     * its server-rendered @foreach and match the pattern the other
+     * requestable tabs (accessory / consumable / component / license)
+     * already use. Row shape carries assigned_to_self plus
+     * available_actions.request/cancel so the JS actions formatter
+     * can pick the right button per row without a second query.
+     */
+    public function requestable(Request $request): array
+    {
+        $this->authorize('viewRequestable', AssetModel::class);
+
+        $query = AssetModel::with('category', 'manufacturer', 'requests')
+            ->withCount('availableAssets as remaining')
+            ->Requestable();
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('models.name', 'LIKE', '%'.$search.'%')
+                    ->orWhere('models.model_number', 'LIKE', '%'.$search.'%');
+            });
+        }
+
+        $total = $query->count();
+        $offset = ($request->input('offset') > $total) ? $total : app('api_offset_value');
+        $limit = app('api_limit_value');
+
+        $order = $request->input('order') === 'asc' ? 'asc' : 'desc';
+        $sort = in_array($request->input('sort'), ['name', 'created_at', 'remaining'], true) ? $request->input('sort') : 'name';
+
+        $rows = $query->orderBy($sort, $order)->skip($offset)->take($limit)->get();
+
+        return (new AssetModelsTransformer)->transformRequestedModels($rows, $total);
+    }
 }

@@ -1,37 +1,44 @@
 <?php
 
-return array(
+return [
 
-    'account_already_exists' => 'Ett konto med denna epostadressen finns redan.',
-    'account_not_found'      => 'Användarnamnet eller lösenordet är felaktigt.',
-    'account_not_activated'  => 'Detta användarkonto är inte aktiverat.',
-    'account_suspended'      => 'Detta användarkontot har blivit suspenderat.',
-    'account_banned'         => 'Detta användarkontot har blivit avstängt.',
-    'throttle'               => 'För många misslyckade inloggningsförsök. Vänligen försök igen i närheten: minuter minut (er).',
+    'account_already_exists' => 'Ett konto med denna e-postadress finns redan.',
+    'account_not_found' => 'Användarnamnet eller lösenordet är felaktigt.',
+    'account_not_activated' => 'Detta användarkonto är inte aktiverat.',
+    'account_suspended' => 'Detta användarkonto är suspenderat.',
 
-    'signin' => array(
-        'error'   => 'Det uppstod ett problem när du försökte logga in, försök igen.',
+    'two_factor' => [
+        'already_enrolled' => 'Din enhet är redan registrerad.',
         'success' => 'Din inloggning lyckades.',
-    ),
+        'code_required' => 'Tvåfaktorskod krävs.',
+        'invalid_code' => 'Tvåfaktorskoden är ogiltig.',
+        'enter_two_factor_code' => 'Ange din tvåfaktorsautentiseringskod.',
+        'please_enroll' => 'Vänligen registrera en enhet med tvåfaktorsautentisering.',
+    ],
 
-    'signup' => array(
-        'error'   => 'Det uppstod ett problem med att skapa ditt konto, försök igen.',
-        'success' => 'Konto har skapats.',
-    ),
+    'signin' => [
+        'error' => 'Det uppstod ett fel vid inloggningen. Vänligen försök igen.',
+        'success' => 'Din inloggning lyckades.',
+    ],
 
-        'forgot-password' => array(
-            'error'   => 'Det uppstod ett problem med att nollställa ditt lösenord, var god försök igen.',
-            'success' => 'E-postmeddelande för lösenordsåterställning har skickats.',
-        ),
+    'logout' => [
+        'error' => 'Det uppstod ett fel vid utloggningen. Vänligen försök igen.',
+        'success' => 'Du har loggat ut.',
+    ],
 
-        'forgot-password-confirm' => array(
-            'error'   => 'Det uppstod ett problem med nollställning av ditt lösenord, var god försök igen.',
-            'success' => 'Ditt lösenord har återställts.',
-        ),
+    'signup' => [
+        'error' => 'Det uppstod ett problem med att skapa ditt konto, försök igen.',
+        'success' => 'Kontot har skapats.',
+    ],
 
-    'activate' => array(
-        'error'   => 'Det uppstod ett problem med att aktivera ditt konto, var god försök igen.',
-        'success' => 'Ditt konto har aktiverats.',
-    ),
+    'forgot-password' => [
+        'error' => 'Det uppstod ett fel med att nollställa ditt lösenord. Vänligen försök igen.',
+        'success' => 'Om e-postadressen finns i vårt system har ett e-postmeddelande om lösenordsåterställning skickats.',
+    ],
 
-);
+    'forgot-password-confirm' => [
+        'error' => 'Det uppstod ett fel med återställning av ditt lösenord. Vänlgien försök igen.',
+        'success' => 'Ditt lösenord har återställts.',
+    ],
+
+];

@@ -2,10 +2,12 @@
 <!-- QTY -->
 <div class="form-group {{ $errors->has('qty') ? ' has-error' : '' }}">
     <label for="qty" class="col-md-3 control-label">{{ trans('general.quantity') }}</label>
-    <div class="col-md-7{{  (\App\Helpers\Helper::checkIfRequired($item, 'qty')) ? ' required' : '' }}">
-       <div class="col-md-2" style="padding-left:0px">
-           <input class="form-control" type="text" name="qty" id="qty" value="{{ Request::old('qty', $item->qty) }}" />
+    <div class="col-md-9">
+       <div class="col-md-3" style="padding-left:0">
+           <input class="form-control" maxlength="5" min="{{ (isset($qty)) ? $qty : '0' }}" type="number" name="qty" aria-label="qty" id="qty" value="{{ old('qty', $item->qty) }}" {!!  (Helper::checkIfRequired($item, 'qty')) ? ' required ' : '' !!}/>
        </div>
-       {!! $errors->first('qty', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
+        <div class="col-md-12" style="padding-left:0">
+       <x-form.error name="qty" />
+        </div>
    </div>
 </div>

@@ -2,166 +2,165 @@
 
 {{-- Page title --}}
 @section('title')
-     {{ trans('admin/hardware/general.checkout') }}
-@parent
+    {{ trans('admin/hardware/general.checkout') }}
+    @parent
 @stop
 
 {{-- Page content --}}
 @section('content')
 
-<style>
+    <style>
+        .input-group {
+            padding-left: 0px !important;
+        }
+    </style>
 
-.input-group {
-    padding-left: 0px !important;
-}
-</style>
+    <x-container columns="2">
+        <x-page-column class="col-md-7">
 
-<div class="row">
-  <!-- left column -->
-  <div class="col-md-7">
-    <div class="box box-default">
-      <form class="form-horizontal" method="post" action="" autocomplete="off">
-        <div class="box-header with-border">
-            <h3 class="box-title"> {{ trans('admin/hardware/form.tag') }} {{ $asset->asset_tag }}</h3>
-        </div>
-        <div class="box-body">
-            {{csrf_field()}}
-            @if ($asset->model->name)
-            <!-- Model name -->
-            <div class="form-group {{ $errors->has('name') ? 'error' : '' }}">
-                {{ Form::label('name', trans('admin/hardware/form.model'), array('class' => 'col-md-3 control-label')) }}
-              <div class="col-md-8">
-                <p class="form-control-static">{{ $asset->model->name }}</p>
-              </div>
-            </div>
-            @endif
+            <x-form id="checkout_form" route="{{ url()->current() }}">
 
-            <!-- Asset Name -->
-            <!-- Only allow an asset name to be changed if the checker-outer has permission to edit the asset -->
-            @can('update', $asset)
-                <div class="form-group {{ $errors->has('name') ? 'error' : '' }}">
-                  {{ Form::label('name', trans('admin/hardware/form.name'), array('class' => 'col-md-3 control-label')) }}
-                  <div class="col-md-8">
-                    <input class="form-control" type="text" name="name" id="name" value="{{ Request::old('name', $asset->name) }}" tabindex="1">
-                    {!! $errors->first('name', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
-                  </div>
-                </div>
-            @else
-                @if ($asset->name!='')
-                    <div class="form-group {{ $errors->has('name') ? 'error' : '' }}">
-                        {{ Form::label('name', trans('admin/hardware/form.name'), array('class' => 'col-md-3 control-label')) }}
-                        <div class="col-md-8">
-                            <p class="form-control-static">{{ $asset->name }}</p>
-                        </div>
-                    </div>
-                @endif
-            @endcan
+                <x-box header="{{ trans('admin/hardware/form.tag') }} {{ $asset->asset_tag }}">
 
-                @include ('partials.forms.checkout-selector', ['user_select' => 'true','asset_select' => 'true', 'location_select' => 'true'])
+                    @if ($asset->company)
+                        <x-form.static :label="trans('general.company')">{!! $asset->company->present()->formattedNameLink !!}</x-form.static>
+                    @endif
 
-                @include ('partials.forms.edit.user-select', ['translated_name' => trans('general.user'), 'fieldname' => 'assigned_user', 'required'=>'true'])
+                    @if ($asset->model->category)
+                        <x-form.static :label="trans('general.category')">{!! $asset->model->category->present()->formattedNameLink !!}</x-form.static>
+                    @endif
 
-                <!-- We have to pass unselect here so that we don't default to the asset that's being checked out. We want that asset to be pre-selected everywhere else. -->
-                @include ('partials.forms.edit.asset-select', ['translated_name' => trans('general.asset'), 'fieldname' => 'assigned_asset', 'unselect' => 'true', 'style' => 'display:none;', 'required'=>'true'])
+                    <x-form.static :label="trans('admin/hardware/form.model')">
+                        @if (($asset->model) && ($asset->model->name))
+                            {{ $asset->model->name }}
+                        @else
+                            <span class="text-danger text-bold">
+                                <x-icon type="warning" />
+                                {{ trans('admin/hardware/general.model_invalid') }}
+                            </span>
+                            {{ trans('admin/hardware/general.model_invalid_fix') }}
+                            <a href="{{ route('hardware.edit', $asset->id) }}">
+                                <strong>{{ trans('admin/hardware/general.edit') }}</strong>
+                            </a>
+                        @endif
+                    </x-form.static>
 
-                @include ('partials.forms.edit.location-select', ['translated_name' => trans('general.location'), 'fieldname' => 'assigned_location', 'style' => 'display:none;', 'required'=>'true'])
+                    <x-form.row
+                        :label="trans('admin/hardware/form.name')"
+                        :$item
+                        name="name"
+                    />
 
+                    <x-form.row
+                        :label="trans('admin/hardware/form.status')"
+                        name="status_id"
+                    >
+                        <x-slot:input>
+                            <x-input.select
+                                name="status_id"
+                                :options="$statusLabel_list"
+                                :selected="$asset->status_id"
+                                required
+                                style="width: 100%;"
+                                aria-label="status_id"
+                            />
+                        </x-slot:input>
+                    </x-form.row>
 
+                    <x-form.checkbox-row
+                        name="requestable"
+                        :label="trans('admin/hardware/general.requestable')"
+                        :item="$asset"
+                        data-user-preference-key="snipeit.checkout.requestable_default.{{ auth()->id() ?? 'guest' }}"
+                        data-had-old-input="{{ ((bool) old('requestable', false)) || session()->has('_old_input.requestable') ? '1' : '0' }}"
+                    />
 
-            <!-- Checkout/Checkin Date -->
-            <div class="form-group {{ $errors->has('checkout_at') ? 'error' : '' }}">
-              {{ Form::label('name', trans('admin/hardware/form.checkout_date'), array('class' => 'col-md-3 control-label')) }}
-              <div class="col-md-8">
-                  <div class="input-group date col-md-5" data-provide="datepicker" data-date-format="yyyy-mm-dd" data-date-end-date="0d">
-                      <input type="text" class="form-control" placeholder="{{ trans('general.select_date') }}" name="checkout_at" id="checkout_at" value="{{ Request::old('checkout_at') }}">
-                      <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                  </div>
-                {!! $errors->first('checkout_at', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
-              </div>
-            </div>
+                    @include ('partials.forms.checkout-selector', ['user_select' => 'true', 'asset_select' => 'true', 'location_select' => 'true'])
+                    <x-input.user-select
+                        :label="trans('general.user')"
+                        name="assigned_user"
+                        :selected="old('assigned_user', $checkoutRequest?->user_id)"
+                        :companyId="$asset->company_id"
+                        :style="(session('checkout_to_type') ?: 'user') == 'user' ? null : 'display: none;'"
+                    />
+                    <!-- unselect keeps the asset being checked out from being pre-selected in this picker -->
+                    @include ('partials.forms.edit.asset-select', ['translated_name' => trans('general.select_asset'), 'fieldname' => 'assigned_asset', 'company_id' => $asset->company_id, 'unselect' => 'true', 'exclude_id' => $asset->id, 'style' => session('checkout_to_type') == 'asset' ? '' : 'display: none;'])
+                    @include ('partials.forms.edit.location-select', ['translated_name' => trans('general.location'), 'fieldname' => 'assigned_location', 'company_id' => $asset->company_id, 'style' => session('checkout_to_type') == 'location' ? '' : 'display: none;'])
 
-            <!-- Expected Checkin Date -->
-            <div class="form-group {{ $errors->has('expected_checkin') ? 'error' : '' }}">
-              {{ Form::label('name', trans('admin/hardware/form.expected_checkin'), array('class' => 'col-md-3 control-label')) }}
-              <div class="col-md-8">
-                  <div class="input-group date col-md-5" data-provide="datepicker" data-date-format="yyyy-mm-dd" data-date-start-date="0d">
-                      <input type="text" class="form-control" placeholder="{{ trans('general.select_date') }}" name="expected_checkin" id="expected_checkin" value="{{ Request::old('expected_checkin') }}">
-                      <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                  </div>
-                {!! $errors->first('expected_checkin', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
-              </div>
-            </div>
+                        <x-input.location-select
+                            :label="trans('general.location')"
+                            name="location_id"
+                            :selected="old('location_id', $asset->location_id)"
+                            :company-id="$asset->company_id"
+                        />
 
-            <!-- Note -->
-            <div class="form-group {{ $errors->has('note') ? 'error' : '' }}">
-              {{ Form::label('note', trans('admin/hardware/form.notes'), array('class' => 'col-md-3 control-label')) }}
-              <div class="col-md-8">
-                <textarea class="col-md-6 form-control" id="note" name="note">{{ Request::old('note', $asset->note) }}</textarea>
-                {!! $errors->first('note', '<span class="alert-msg"><i class="fa fa-times"></i> :message</span>') !!}
-              </div>
-            </div>
+                        <x-input.location-select
+                            :label="trans('admin/hardware/form.default_location')"
+                            name="rtd_location_id"
+                            :selected="old('rtd_location_id', $asset->rtd_location_id)"
+                            :company-id="$asset->company_id"
+                        />
 
-                @if ($asset->requireAcceptance() || $asset->getEula() || ($snipeSettings->slack_endpoint!=''))
-                    <div class="form-group notification-callout">
-                        <div class="col-md-8 col-md-offset-3">
-                            <div class="callout callout-info">
+                    <x-form.row
+                        :label="trans('admin/hardware/form.checkout_date')"
+                        name="checkout_at"
+                        type="datetimepicker"
+                        :item="$item"
+                        :default="date('Y-m-d H:i:s')"
+                        input_div_class="col-md-4"
+                    />
 
-                                    @if ($asset->requireAcceptance())
-                                        <i class="fa fa-envelope"></i>
-                                    {{ trans('admin/categories/general.required_acceptance') }}
-                                        <br>
-                                    @endif
+                    <x-form.row
+                        :label="trans('admin/hardware/form.expected_checkin')"
+                        name="expected_checkin"
+                        type="datetimepicker"
+                        :item="$item"
+                        :default_now="false"
+                        :default="old('expected_checkin', ($checkoutRequest?->end_date ? $checkoutRequest->end_date->toDateString() : ($item->expected_checkin ?? null)))"
+                        input_div_class="col-md-4"
+                    />
 
-                                    @if ($asset->getEula())
-                                        <i class="fa fa-envelope"></i>
-                                       {{ trans('admin/categories/general.required_eula') }}
-                                        <br>
-                                    @endif
+                    <x-form.row
+                        :label="trans('general.notes')"
+                        name="note"
+                    >
+                        <x-slot:input>
+                            <textarea class="col-md-6 form-control" id="note" name="note" @required($snipeSettings->require_checkinout_notes)>{{ old('note', $asset->note) }}</textarea>
+                        </x-slot:input>
+                    </x-form.row>
 
-                                    @if ($snipeSettings->slack_endpoint!='')
-                                        <i class="fa fa-slack"></i>
-                                       A slack message will be sent
-                                    @endif
-                            </div>
-                        </div>
-                    </div>
-                 @endif
+                    <!-- Custom fields -->
+                    @include('models/custom_fields_form', [
+                        'model' => $asset->model,
+                        'show_custom_fields_type' => 'checkout',
+                    ])
 
-        </div> <!--/.box-body-->
-        <div class="box-footer">
-          <a class="btn btn-link" href="{{ URL::previous() }}"> {{ trans('button.cancel') }}</a>
-          <button type="submit" class="btn btn-success pull-right"><i class="fa fa-check icon-white"></i> {{ trans('general.checkout') }}</button>
-        </div>
-      </form>
-    </div>
-  </div> <!--/.col-md-7-->
+                    <x-checkout.checkout-notification-callout :item="$asset" :category="$asset->model?->category" />
 
-  <!-- right column -->
-  <div class="col-md-5" id="current_assets_box" style="display:none;">
-    <div class="box box-primary">
-      <div class="box-header with-border">
-        <h3 class="box-title">{{ trans('admin/users/general.current_assets') }}</h3>
-      </div>
-      <div class="box-body">
-        <div id="current_assets_content">
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-@stop
+                    <x-slot:customfooter>
+                        <x-redirect_submit_options
+                            index_route="hardware.index"
+                            :button_label="trans('general.checkout')"
+                            :disabled_select="!$asset->model"
+                            :options="[
+                                'index' => trans('admin/hardware/form.redirect_to_all', ['type' => trans('general.assets')]),
+                                'item' => trans('admin/hardware/form.redirect_to_type', ['type' => trans('general.asset')]),
+                                'target' => trans('admin/hardware/form.redirect_to_checked_out_to'),
+                            ]"
+                        />
+                    </x-slot:customfooter>
 
-@section('moar_scripts')
-    @include('partials/assets-assigned')
+                </x-box>
 
-    <script>
-//        $('#checkout_at').datepicker({
-//            clearBtn: true,
-//            todayHighlight: true,
-//            endDate: '0d',
-//            format: 'yyyy-mm-dd'
-//        });
+            </x-form>
 
+        </x-page-column>
 
-    </script>
+        <x-page-column class="col-md-5">
+            <x-checkout-request-context :request="$checkoutRequest ?? null" :requestable="$asset" />
+
+            <livewire:checkout-target-panel type="assets" />
+        </x-page-column>
+
+    </x-container>
 @stop
